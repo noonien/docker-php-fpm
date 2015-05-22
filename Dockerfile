@@ -3,10 +3,10 @@ MAINTAINER George Jiglau <george@mux.ro>
 
 ENV DEBIAN_FRONTEND noninteractive
 
-# Update package list and install all non-conflicting php5 packages except
-# php5-xdebug and php5-snmp
+# Update package list and install all non-conflicting php5 modules, except
+# xdebug, snmp and midgard2
 RUN apt-get update && \
-    apt-get install -y $(apt-cache pkgnames php5 | grep -Pv '(apcu|mysqlnd|xdebug|snmp)')
+    apt-get install -y $(apt-cache pkgnames php5 | grep -Pv '(apcu|mysqlnd|xdebug|snmp|midgard2)')
 
 # Configure php5-fpm
 RUN sed -i '/daemonize /c daemonize = no' /etc/php5/fpm/php-fpm.conf && \
