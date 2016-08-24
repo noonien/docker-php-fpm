@@ -1,26 +1,27 @@
-FROM ubuntu:latest
+FROM php:5.6-fpm-alpine
 MAINTAINER George Jiglau <george@mux.ro>
 
-ENV DEBIAN_FRONTEND noninteractive
+RUN apk upgrade --update \
+    # install build dependencies
+    && apk --update add --virtual .build-deps $PHPIZE_DEPS \
+        freetype-dev imagemagick-dev libjpeg-turbo-dev libmcrypt-dev \
+        libmemcached-dev libpng-dev libtool \
 
-# Update package list and install all non-conflicting php5 modules, except
-# xdebug, snmp and midgard2
-RUN apt-get update && \
-    apt-get install -y $(apt-cache pkgnames php5 | grep -Pv '(apcu|mysqlnd|xdebug|snmp|midgard2)')
+    && docker-php-source extract \
 
-# Configure php5-fpm
-RUN sed -i '/daemonize /c daemonize = no' /etc/php5/fpm/php-fpm.conf && \
-    sed -e '/^listen /c listen = 0.0.0.0:9000' \
-        -e 's/^listen.allowed_clients/;listen.allowed_clients/' \
-        -e '/catch_workers_output/s/^;//' \
-        -i /etc/php5/fpm/pool.d/www.conf
+    # install pecl extensions
+    && pecl install imagick redis-2.2.8 \
+    && echo "no --disable-memcached-sasl" | pecl install memcached \
+    && docker-php-ext-enable imagick memcached redis \
 
-# Use the same php.ini for CLI and FPM
-RUN rm -rf /etc/php5/cli/php.ini && \
-    ln -s /etc/php5/fpm/php.ini /etc/php5/cli/php.ini
+    # install php extensions
+    && docker-php-ext-install curl dom hash iconv intl json mcrypt mysql \
+        opcache pdo pdo_mysql simplexml snmp soap xml zip \
+    && docker-php-ext-configure gd --with-freetype-dir=/usr/include/ \
+        --with-jpeg-dir=/usr/include/ \
+    && docker-php-ext-install gd \
 
-# Install composer
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
-
-EXPOSE 9000
-CMD php5-fpm
+    # clean
+    && apk del .build-deps \
+    && docker-php-source delete \
+    && rm -rf /var/cache/apk/*
